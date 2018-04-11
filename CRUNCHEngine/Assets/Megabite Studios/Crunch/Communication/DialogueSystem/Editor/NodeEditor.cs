@@ -91,7 +91,7 @@ namespace Crunch.Communication
                 item.DrawConnections(windows);
             }
 
-            if(e.type == EventType.keyDown)
+            if(e.type == EventType.KeyDown)
             {
                 if(e.keyCode == KeyCode.Escape)
                 {
@@ -130,7 +130,7 @@ namespace Crunch.Communication
 
             if (e.isMouse)
             {
-                if (e.type == EventType.mouseDrag)
+                if (e.type == EventType.MouseDrag)
                 {
                     if (e.button == 0)
                     {
