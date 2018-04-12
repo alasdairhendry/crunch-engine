@@ -21,9 +21,11 @@ namespace Crunch.Engine
             }
 
             DontDestroyOnLoad(gameObject);
+
+            RunEngine();
         }
 
-        [SerializeField] private CrunchEngineData currentData;
+        [SerializeField] [HideInInspector] private CrunchEngineData currentData;
         public CrunchEngineData CurrentData { get { return currentData; } set { currentData = value; } }
 
         private void OnDisable()
@@ -41,6 +43,34 @@ namespace Crunch.Engine
         public void AssignEngineData(CrunchEngineData newData)
         {
             currentData = newData;
+        }
+
+        private void RunEngine()
+        {
+            if (currentData.usingLoadingSystem) CreateLoadingSystem();
+            if (currentData.usingMusicSystem) CreateMusicSystem();
+            if (currentData.usingSoundEffectSystem) CreateSoundEffectSystem();
+            if (currentData.usingPoolingSystem) CreatePoolingSystem();
+        }
+
+        private void CreateLoadingSystem()
+        {
+            Debug.Log("CreateLoadingSystem");
+        }
+
+        private void CreateMusicSystem()
+        {
+            Debug.Log("CreateMusicSystem");
+        }
+
+        private void CreateSoundEffectSystem()
+        {
+            Debug.Log("CreateSoundEffectSystem");
+        }
+
+        private void CreatePoolingSystem()
+        {
+            Debug.Log("CreatePoolingSystem");
         }
     }
 }

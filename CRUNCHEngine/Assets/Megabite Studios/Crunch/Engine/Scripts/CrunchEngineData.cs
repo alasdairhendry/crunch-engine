@@ -11,4 +11,10 @@ public class CrunchEngineData : ScriptableObject {
     [HideInInspector] public AudioClip UISoundEvent_MouseDown;
     [HideInInspector] public AudioClip UISoundEvent_MouseUp;
     [HideInInspector] public AudioClip UISoundEvent_MouseExit;
+
+    [HideInInspector] public bool usingLoadingSystem = false;
+    [HideInInspector] public bool usingMusicSystem = false;
+    [HideInInspector] public bool usingSoundEffectSystem = false;
+    [HideInInspector] public bool usingPoolingSystem = false;
+
 }

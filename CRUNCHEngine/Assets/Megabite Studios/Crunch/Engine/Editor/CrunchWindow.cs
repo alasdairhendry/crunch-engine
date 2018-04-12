@@ -10,15 +10,10 @@ namespace Crunch.Engine.Editor
 {
     public class CrunchWindow : EditorWindow
     {
-        private bool hasCurrentData = false;
-        private bool hasCrunchEngine = false;
-        //private CrunchEngineData currentData;
         private CrunchEngine crunchEngine;
+        private bool hasCurrentData, hasCrunchEngine = false;        
 
-        private bool sceneTab;
-        private bool assetsTab;
-        private bool utilitiesTab;
-        private bool consoleTab;
+        private bool sceneTab, engineTab, utilitiesTab, consoleTab;        
         private int iconDimensions = 24;
         private Vector2 mainScrollPosition;
         private Vector2 searchScrollPosition;
@@ -31,61 +26,75 @@ namespace Crunch.Engine.Editor
         private string scene_SearchParameter = "";
         private List<int> scene_FavouriteObjects = new List<int>();
 
-        // Utilities Tab
-        private AudioClip UISoundEvent_MouseEnter;
-        private AudioClip UISoundEvent_MouseDown;
-        private AudioClip UISoundEvent_MouseUp;
-        private AudioClip UISoundEvent_MouseExit;
-
         [MenuItem("Crunch/Open Engine", false, 0)]
         private static void Open()
         {
             CrunchWindow window = GetWindow<CrunchWindow>();
             window.Show();
-            window.Initialize();
+            window.InitializeWindow();
         }
 
-        private void OnEnable()
-        {
-            CrunchEngine ce = GameObject.FindObjectOfType<CrunchEngine>();
-            if(ce == null)
-            {
-                hasCrunchEngine = false;
-                hasCurrentData = false;
-                //currentData = null;
-                crunchEngine = null;
-            }
-            else
-            {
-                crunchEngine = ce;
-                hasCrunchEngine = true;
-
-                if(crunchEngine.CurrentData != null)
-                {
-                    hasCurrentData = true;
-                    //currentData = ce.CurrentData;
-                }
-            }
-            titleContent.text = "Crunch Engine";            
-        }
-
-        private void Initialize()
-        {
+        // Called when the window is opened
+        private void InitializeWindow()
+        {            
             position = new Rect(Screen.width - (Screen.width / 2) - 256, Screen.height + (Screen.height / 2) + 256, 512, 512);
-            minSize = new Vector2(512, 256);
+            minSize = new Vector2(384, 256);
             sceneTab = true;
             ReadFavourites();
         }
 
+        private void OnEnable()
+        {            
+            titleContent.text = "Crunch Engine";
+            CheckEngineInitialization();
+        }
+
+        // Check if we have "enabled" CrunchEngine (i.e, Created the instance object and assigned an Engine Preset)
+        private void CheckEngineInitialization()
+        {
+            CrunchEngine engine = GameObject.FindObjectOfType<CrunchEngine>();
+            if (engine == null)
+            {
+                hasCrunchEngine = false;
+                hasCurrentData = false;                
+                crunchEngine = null;                
+            }
+            else
+            {
+                crunchEngine = engine;
+                hasCrunchEngine = true;
+
+                if (crunchEngine.CurrentData != null)
+                {
+                    hasCurrentData = true;                    
+                }
+                else
+                {
+                    hasCurrentData = false;
+                }
+            }
+        }
+
+        // Called each Unity Editor GUI Update (i.e, every time an event happens on this editor window)
+        private void OnGUI()
+        {
+            // Check the engine initialization each time the window updates
+            CheckEngineInitialization();           
+
+            // Draw all content to the window, depending on the values selected
+            Draw();
+        }
+
+        // Draw all content to the window, depending on the values selected
         private void Draw()
         {
-            Draw_TabOptions();
+            Draw_Toolbar();
 
             if (hasCurrentData)
             {
-                Draw_Toolbar();
+                Draw_SecondaryToolbar();
                 Draw_SceneTab();
-                Draw_AssetsTab();
+                Draw_EngineTab();
                 Draw_UtilitiesTab();
             }
             else
@@ -94,161 +103,159 @@ namespace Crunch.Engine.Editor
             }
         }
 
+        // Draw the Initialization screen if the engine hasn't yet been "enabled"
         private void Draw_Initialization()
         {
-            GUILayout.BeginVertical("Box");
-            GUILayout.Label("Crunch Engine", EditorStyles.boldLabel);
-            GUILayout.EndVertical();
-
-            mainScrollPosition = GUILayout.BeginScrollView(mainScrollPosition, false, false);
-            GUILayout.BeginVertical("Box");
-
-            GUILayout.Label("Initialize", EditorStyles.boldLabel);
-
-            if (hasCrunchEngine)
+            VerticalBox(() =>
             {
-                if (!hasCurrentData)
-                {                                        
-                    EditorGUILayout.LabelField("You haven't initialized your current Preset yet. \\nIf you have not created one yet, please do so using the button. If you already have a Preset, assign it in the field.");
-                    EditorStyles.label.wordWrap = true;
+                Label("Crunch Engine", true);
+            });
 
-                    GUILayout.BeginHorizontal();
-                    GUILayout.Space(20);
-                    GUILayout.Label("Create New Preset: ");
-                    GUILayout.FlexibleSpace();
-                    if (GUILayout.Button("Create New"))
+            ScrollBox(() =>
+            {
+                VerticalBox(() =>
+                {
+                    Label("Initialize", true);
+
+                    if (hasCrunchEngine)
                     {
-                        CrunchEngineData data = ScriptableObject.CreateInstance<CrunchEngineData>();
-                        AssetDatabase.CreateAsset(data, "Assets/Megabite Studios/Crunch/Presets/New Preset.asset");
-                        AssetDatabase.SaveAssets();
-                        EditorUtility.FocusProjectWindow();
-                        Selection.activeObject = data;
-
-                        crunchEngine.AssignEngineData(data);
-                        //currentData = data;
-                        //titleContent.text = "Crunch Engine - " + currentData.presetName;
-                        hasCurrentData = true;
-                    }
-                    GUILayout.EndHorizontal();
-
-                    GUILayout.BeginHorizontal();
-                    GUILayout.Space(20);
-                    GUILayout.Label("Or Assign Existing: ");
-                    GUILayout.FlexibleSpace();
-                    EditorGUI.BeginChangeCheck();
-                    crunchEngine.CurrentData = (CrunchEngineData)EditorGUILayout.ObjectField(crunchEngine.CurrentData, typeof(CrunchEngineData), false);
-                    if (EditorGUI.EndChangeCheck())
-                    {
-                        if (crunchEngine.CurrentData != null)
+                        if (!hasCurrentData)
                         {
-                            hasCurrentData = true;
+                            EditorGUILayout.LabelField("You haven't initialized your current Preset yet. If you have not created one yet, please do so using the button. If you already have a Preset, assign it in the field.");
+                            EditorStyles.label.wordWrap = true;
 
-                            if (hasCrunchEngine)
+                            Horizontal(() =>
                             {
-                                //crunchEngine.AssignEngineData(currentData);
-                                //currentData = crunchEngine.CurrentData;
-                                //titleContent.text = "Crunch Engine - " + currentData.presetName;
-                            }
-                            else
+                                GUILayout.Space(20);
+                                Label("Create New Preset: ", false);
+                                GUILayout.FlexibleSpace();
+                                if (GUILayout.Button("Create New"))
+                                {
+                                    CrunchEngineData data = ScriptableObject.CreateInstance<CrunchEngineData>();
+                                    AssetDatabase.CreateAsset(data, "Assets/Megabite Studios/Crunch/Presets/New Preset.asset");
+                                    AssetDatabase.SaveAssets();
+                                    EditorUtility.FocusProjectWindow();
+                                    Selection.activeObject = data;
+
+                                    crunchEngine.AssignEngineData(data);
+                                    hasCurrentData = true;
+                                }
+                            });
+
+                            Horizontal(() =>
                             {
-                                GameObject go = new GameObject();
-                                go.transform.position = Vector3.zero;
-                                go.transform.localScale = Vector3.one;
-                                go.transform.rotation = Quaternion.identity;
-                                go.name = "CrunchEngine";
-                                crunchEngine = go.AddComponent<CrunchEngine>();
-                                //crunchEngine.AssignEngineData(currentData);
-                                //currentData = crunchEngine.CurrentData;
-                                //titleContent.text = "Crunch Engine - " + currentData.presetName;
-                                hasCrunchEngine = true;
-                            }
+                                GUILayout.Space(20);
+                                Label("Or Assign Existing: ", false);
+                                GUILayout.FlexibleSpace();
+                                EditorGUI.BeginChangeCheck();
+                                crunchEngine.CurrentData = (CrunchEngineData)EditorGUILayout.ObjectField(crunchEngine.CurrentData, typeof(CrunchEngineData), false);
+                                if (EditorGUI.EndChangeCheck())
+                                {
+                                    if (crunchEngine.CurrentData != null)
+                                    {
+                                        hasCurrentData = true;
+
+                                        if (!hasCrunchEngine)
+                                        {
+                                            GameObject go = new GameObject();
+                                            go.transform.position = Vector3.zero;
+                                            go.transform.localScale = Vector3.one;
+                                            go.transform.rotation = Quaternion.identity;
+                                            go.name = "CrunchEngine";
+                                            crunchEngine = go.AddComponent<CrunchEngine>();
+                                            hasCrunchEngine = true;
+                                        }
+                                    }
+                                }
+                            });
                         }
                     }
-                    GUILayout.EndHorizontal();
-                }
-            }
-            else
-            {
-                GUILayout.Label("You haven't initialized Crunch Engine yet. Use the button below to begin.");
+                    else
+                    {
+                        EditorGUILayout.LabelField("You haven't initialized Crunch Engine yet. Use the button below to begin.");
+                        EditorStyles.label.wordWrap = true;
+                        EditorGUILayout.LabelField("NOTE: You will receive this message if the CrunchEngine GameObject is inactive.");
+                        EditorStyles.label.wordWrap = true;                        
 
-                GUILayout.BeginHorizontal();  
-                if (GUILayout.Button("Begin"))
-                {
-                    GameObject go = new GameObject();
-                    go.transform.position = Vector3.zero;
-                    go.transform.localScale = Vector3.one;
-                    go.transform.rotation = Quaternion.identity;
-                    go.name = "CrunchEngine";
-                    go.AddComponent<CrunchEngine>();
-                    crunchEngine = go.GetComponent<CrunchEngine>();
-                    hasCrunchEngine = true;
-                }
-                GUILayout.EndHorizontal();
-            }
+                        GUILayout.BeginHorizontal();
+                        if (GUILayout.Button("Begin"))
+                        {
+                            GameObject go = new GameObject();
+                            go.transform.position = Vector3.zero;
+                            go.transform.localScale = Vector3.one;
+                            go.transform.rotation = Quaternion.identity;
+                            go.name = "CrunchEngine";
+                            go.AddComponent<CrunchEngine>();
+                            crunchEngine = go.GetComponent<CrunchEngine>();
+                            hasCrunchEngine = true;
+                        }
+                        GUILayout.EndHorizontal();
+                    }
 
-            GUILayout.EndVertical();
-            GUILayout.EndScrollView();
+                });
+            });          
         }
 
+        // Draws the toolbar options at the top of the window (Scene, Assets, Utilities etc...)
         private void Draw_Toolbar()
         {
-            GUILayout.BeginHorizontal(EditorStyles.toolbar, GUILayout.Width(position.width));
+            Vertical(() =>
+            {
+                if (GUILayout.Button("Close Window", EditorStyles.toolbarButton)) { CrunchWindow window = GetWindow<CrunchWindow>(); window.Close(); }
+            }, EditorStyles.toolbar);
+
+            Vertical(() =>
+            {
+                Horizontal(() =>
+                {
+                    if (GUILayout.Button("Scene", EditorStyles.toolbarButton))
+                    {
+                        sceneTab = true;
+                        engineTab = false;
+                        utilitiesTab = false;
+                        consoleTab = false;
+                    }
+
+                    if (GUILayout.Button("Engine", EditorStyles.toolbarButton))
+                    {
+                        sceneTab = false;
+                        engineTab = true;
+                        utilitiesTab = false;
+                        consoleTab = false;
+                    }
+
+                    if (GUILayout.Button("Utilities", EditorStyles.toolbarButton))
+                    {
+                        sceneTab = false;
+                        engineTab = false;
+                        utilitiesTab = true;
+                        consoleTab = false;
+                    }
+
+                    //if (GUILayout.Button("Console", EditorStyles.toolbarButton))
+                    //{
+                    //    sceneTab = false;
+                    //    assetsTab = false;
+                    //    utilitiesTab = false;
+                    //    consoleTab = true;
+                    //}
+                });
+            }, EditorStyles.toolbar);
+        }
+
+        // Draws secondary toolbar options for each individual tab
+        private void Draw_SecondaryToolbar()
+        {
             if (sceneTab)
             {
+                GUILayout.BeginHorizontal(EditorStyles.toolbar, GUILayout.Width(position.width));
                 sceneDisplayObjectTypes = (SceneDisplayObjectTypes)EditorGUILayout.EnumPopup(sceneDisplayObjectTypes);
                 if (GUILayout.Button("Clear Console", EditorStyles.toolbarButton)) { Debug.Log(Utilities.Log.Clear()); }
+                GUILayout.EndHorizontal();
             }
-            else if (assetsTab)
-            {
-
-            }
-            GUILayout.EndHorizontal();
         }
 
-        private void Draw_TabOptions()
-        {
-            GUILayout.BeginVertical(EditorStyles.toolbar);
-            if (GUILayout.Button("Close Window", EditorStyles.toolbarButton)) { CrunchWindow window = GetWindow<CrunchWindow>(); window.Close(); }
-            GUILayout.EndVertical();
-
-            GUILayout.BeginVertical(EditorStyles.toolbar);
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button("Scene", EditorStyles.toolbarButton))
-            {
-                sceneTab = true;
-                assetsTab = false;
-                utilitiesTab = false;
-                consoleTab = false;
-            }
-
-            if (GUILayout.Button("Assets", EditorStyles.toolbarButton))
-            {
-                sceneTab = false;
-                assetsTab = true;
-                utilitiesTab = false;
-                consoleTab = false;
-            }
-
-            if (GUILayout.Button("Utilities", EditorStyles.toolbarButton))
-            {
-                sceneTab = false;
-                assetsTab = false;
-                utilitiesTab = true;
-                consoleTab = false;
-            }
-
-            if (GUILayout.Button("Console", EditorStyles.toolbarButton))
-            {
-                sceneTab = false;
-                assetsTab = false;
-                utilitiesTab = false;
-                consoleTab = true;
-            }
-
-           
-            GUILayout.EndHorizontal();
-            GUILayout.EndVertical();
-        }
+        #region Tabs
 
         private void Draw_SceneTab()
         {
@@ -267,231 +274,239 @@ namespace Crunch.Engine.Editor
             AudioSource[] audioSource = GameObject.FindObjectsOfType<AudioSource>();
             Light[] lights = GameObject.FindObjectsOfType<Light>();
 
-            GUILayout.BeginVertical("Box");
-            GUILayout.BeginHorizontal();
-            GUILayout.BeginVertical();
-            GUILayout.Label("Scene", EditorStyles.boldLabel);
-            GUILayout.Space(12);
-            GUILayout.EndVertical();
-            GUILayout.BeginVertical();
-            GUILayout.Space(6);
-            GUILayout.BeginHorizontal();
-            scene_SearchParameter = EditorGUILayout.TextField(scene_SearchParameter);
-            GUILayout.Label(Resources.Load("Textures/search") as Texture, GUILayout.MaxWidth(iconDimensions - 4), GUILayout.MaxHeight(iconDimensions - 4));
-            GUILayout.EndHorizontal();
-            GUILayout.EndVertical();
-            GUILayout.EndHorizontal();            
-            GUILayout.EndVertical();
+            VerticalBox(() =>
+            {
+                Horizontal(() =>
+                {
+                    Vertical(() =>
+                    {
+                        GUILayout.Label("Scene", EditorStyles.boldLabel);
+                        GUILayout.Space(12);
+                    });
+
+                    Vertical(() =>
+                    {
+                        GUILayout.Space(6);
+                        Horizontal(() =>
+                        {
+                            scene_SearchParameter = EditorGUILayout.TextField(scene_SearchParameter);
+                            GUILayout.Label(Resources.Load("Textures/search") as Texture, GUILayout.MaxWidth(iconDimensions - 4), GUILayout.MaxHeight(iconDimensions - 4));
+                        });
+                    });
+                });
+            });          
 
             if (!string.IsNullOrEmpty(scene_SearchParameter))
-            {                
-                GUILayout.BeginVertical("Box");
-                GUILayout.Label("Search Results", EditorStyles.boldLabel);
-                searchScrollPosition = GUILayout.BeginScrollView(searchScrollPosition, false, false, GUILayout.MaxHeight(78));                
-
-                bool returnedResult = false;
-                int i = 0;
-                foreach (GameObject item in go)
-                {
-                    if(item.name.ToLower().Contains(scene_SearchParameter.ToString().ToLower()))
-                    {
-                        i++;
-                        GUILayout.BeginHorizontal();                        
-                        GUILayout.Label(i.ToString() + ".", GUILayout.MaxWidth(16));                        
-                        DrawList(item, () => { });
-                        GUILayout.EndHorizontal();
-                        returnedResult = true;
-                    }
-                }
-
-                if(!returnedResult)
-                {
-                    GUILayout.Label("No results.");
-                }
-
-                GUILayout.EndScrollView();
-                GUILayout.EndVertical();               
-            }            
-
-            mainScrollPosition = GUILayout.BeginScrollView(mainScrollPosition, false, false);
-            GUILayout.BeginVertical("Box");
-            GUILayout.Label("Overview", EditorStyles.boldLabel);
-            GUILayout.Label(go.Length + " - GameObjects");
-            GUILayout.Label(meshRenderers.Length + " - Mesh Renderers");
-            GUILayout.Label(skinnedMeshRenderers.Length + " - Skinned Mesh Renderers");
-            GUILayout.Label(lights.Length + " - Lights");
-            GUILayout.EndVertical();
-
-            GUILayout.BeginVertical("Box");
-            GUILayout.Label("Inspection", EditorStyles.boldLabel);
-            GUILayout.BeginVertical();
-
-            scene_FoldoutUIElements = EditorGUILayout.Foldout(scene_FoldoutUIElements, ui.Length + " - UI Elements", true);
-            if (scene_FoldoutUIElements)
             {
-                EditorGUI.indentLevel++;
-                scene_FoldoutTexts = EditorGUILayout.Foldout(scene_FoldoutTexts, texts.Length + " - Text", true);
-                if (scene_FoldoutTexts)
-                {
-                    EditorGUI.indentLevel++;
-                    EditorGUI.indentLevel++;
-                    foreach (Text item in texts)
-                    {
-                        DrawList(item.gameObject, () => { GUILayout.BeginVertical(); item.text = EditorGUILayout.TextField(item.text); item.color = EditorGUILayout.ColorField(item.color); GUILayout.EndVertical(); }, 3);
-                    }
-                    EditorGUI.indentLevel--;
-                    EditorGUI.indentLevel--;
-                }
+                VerticalBox(() =>
+                {                
+                    Label("Search Results", true);
+                    searchScrollPosition = GUILayout.BeginScrollView(searchScrollPosition, false, false, GUILayout.MaxHeight(78));
 
-                scene_FoldoutImages = EditorGUILayout.Foldout(scene_FoldoutImages, images.Length + " - Images", true);
-                if (scene_FoldoutImages)
-                {
-                    EditorGUI.indentLevel++;
-                    EditorGUI.indentLevel++;
-                    foreach (Image item in images)
+                    bool returnedResult = false;
+                    int i = 0;
+                    foreach (GameObject item in go)
                     {
-                        DrawList(item.gameObject, () => { }, 3);
+                        if (item.name.ToLower().Contains(scene_SearchParameter.ToString().ToLower()))
+                        {
+                            i++;                            
+                            Horizontal(() =>
+                            {
+                                GUILayout.Label(i.ToString() + ".", GUILayout.MaxWidth(16));
+                                DrawList(item, () => { });
+                            });                            
+                            returnedResult = true;
+                        }
                     }
-                    EditorGUI.indentLevel--;
-                    EditorGUI.indentLevel--;
-                }
 
-                scene_FoldoutButtons = EditorGUILayout.Foldout(scene_FoldoutButtons, buttons.Length + " - Buttons", true);
-                if (scene_FoldoutButtons)
-                {
-                    EditorGUI.indentLevel++;
-                    EditorGUI.indentLevel++;
-                    foreach (Button item in buttons)
+                    if (!returnedResult)
                     {
-                        DrawList(item.gameObject, () => { }, 3);
+                        Label("No results.", false);
                     }
-                    EditorGUI.indentLevel--;
-                    EditorGUI.indentLevel--;
-                }
 
-                scene_FoldoutInputFields = EditorGUILayout.Foldout(scene_FoldoutInputFields, inputFields.Length + " - Input Fields", true);
-                if (scene_FoldoutInputFields)
-                {
-                    EditorGUI.indentLevel++;
-                    EditorGUI.indentLevel++;
-                    foreach (InputField item in inputFields)
-                    {
-                        DrawList(item.gameObject, () => { }, 3);
-                    }
-                    EditorGUI.indentLevel--;
-                    EditorGUI.indentLevel--;
-                }
-                EditorGUI.indentLevel--;
-            }
-
-            scene_FoldoutAudioSource = EditorGUILayout.Foldout(scene_FoldoutAudioSource, audioSource.Length + " - Audio Sources", true);
-            if (scene_FoldoutAudioSource)
+                    GUILayout.EndScrollView();
+                });                            
+            }        
+            
+            ScrollBox(() =>
             {
-
-            }
-
-
-            GUILayout.EndVertical();
-            GUILayout.EndVertical();
-
-            GUILayout.BeginVertical("Box");
-            GUILayout.Label("Favourites", EditorStyles.boldLabel);
-
-            if (scene_FavouriteObjects.Count > 0)
-            {
-                foreach (int item in scene_FavouriteObjects)
+                VerticalBox(() =>
                 {
-                    GameObject _go = EditorUtility.InstanceIDToObject(item) as GameObject;
+                    GUILayout.Label("Overview", EditorStyles.boldLabel);
+                    GUILayout.Label(go.Length + " - GameObjects");
+                    GUILayout.Label(meshRenderers.Length + " - Mesh Renderers");
+                    GUILayout.Label(skinnedMeshRenderers.Length + " - Skinned Mesh Renderers");
+                    GUILayout.Label(lights.Length + " - Lights");
+                });
 
-                    if (_go == null)
-                        continue;
+                VerticalBox(() =>
+                {
+                    Label("Inspection", true);
+                    scene_FoldoutUIElements = EditorGUILayout.Foldout(scene_FoldoutUIElements, ui.Length + " - UI Elements", true);
+                    if (scene_FoldoutUIElements)
+                    {
+                        EditorGUI.indentLevel++;
+                        scene_FoldoutTexts = EditorGUILayout.Foldout(scene_FoldoutTexts, texts.Length + " - Text", true);
+                        if (scene_FoldoutTexts)
+                        {
+                            EditorGUI.indentLevel++;
+                            EditorGUI.indentLevel++;
+                            foreach (Text item in texts)
+                            {
+                                DrawList(item.gameObject, () => { GUILayout.BeginVertical(); item.text = EditorGUILayout.TextField(item.text); item.color = EditorGUILayout.ColorField(item.color); GUILayout.EndVertical(); }, 3);
+                            }
+                            EditorGUI.indentLevel--;
+                            EditorGUI.indentLevel--;
+                        }
 
-                    DrawList(_go, () => { });
-                }
-            }
-            else
-            {
-                GUILayout.Label("No favourites.");
-            }
+                        scene_FoldoutImages = EditorGUILayout.Foldout(scene_FoldoutImages, images.Length + " - Images", true);
+                        if (scene_FoldoutImages)
+                        {
+                            EditorGUI.indentLevel++;
+                            EditorGUI.indentLevel++;
+                            foreach (Image item in images)
+                            {
+                                DrawList(item.gameObject, () => { }, 3);
+                            }
+                            EditorGUI.indentLevel--;
+                            EditorGUI.indentLevel--;
+                        }
 
+                        scene_FoldoutButtons = EditorGUILayout.Foldout(scene_FoldoutButtons, buttons.Length + " - Buttons", true);
+                        if (scene_FoldoutButtons)
+                        {
+                            EditorGUI.indentLevel++;
+                            EditorGUI.indentLevel++;
+                            foreach (Button item in buttons)
+                            {
+                                DrawList(item.gameObject, () => { }, 3);
+                            }
+                            EditorGUI.indentLevel--;
+                            EditorGUI.indentLevel--;
+                        }
 
-            GUILayout.EndVertical();
-            GUILayout.EndScrollView();
+                        scene_FoldoutInputFields = EditorGUILayout.Foldout(scene_FoldoutInputFields, inputFields.Length + " - Input Fields", true);
+                        if (scene_FoldoutInputFields)
+                        {
+                            EditorGUI.indentLevel++;
+                            EditorGUI.indentLevel++;
+                            foreach (InputField item in inputFields)
+                            {
+                                DrawList(item.gameObject, () => { }, 3);
+                            }
+                            EditorGUI.indentLevel--;
+                            EditorGUI.indentLevel--;
+                        }
+                        EditorGUI.indentLevel--;
+                    }
+
+                    scene_FoldoutAudioSource = EditorGUILayout.Foldout(scene_FoldoutAudioSource, audioSource.Length + " - Audio Sources", true);
+                    if (scene_FoldoutAudioSource)
+                    {
+
+                    }
+                });
+
+                VerticalBox(() =>
+                {
+                    GUILayout.Label("Favourites", EditorStyles.boldLabel);
+
+                    if (scene_FavouriteObjects.Count > 0)
+                    {
+                        foreach (int item in scene_FavouriteObjects)
+                        {
+                            GameObject _go = EditorUtility.InstanceIDToObject(item) as GameObject;
+
+                            if (_go == null)
+                                continue;
+
+                            DrawList(_go, () => { });
+                        }
+                    }
+                    else
+                    {
+                        GUILayout.Label("No favourites.");
+                    }
+                });
+            });                       
         }
 
-        private void Draw_AssetsTab()
-        {
-            if (!assetsTab)
+        private void Draw_EngineTab()
+        {            
+            if (!engineTab)
                 return;
+            
+            VerticalBox(() =>
+            {
+                Label("Engine", true);
+            });            
+            
+            ScrollBox(() =>
+            {
+                #region Engine                
+                VerticalBox(() =>
+                {
+                    Label("Preset", true);
 
-            GUILayout.BeginVertical("Box");
-            GUILayout.Label("Assets", EditorStyles.boldLabel);
-            GUILayout.EndVertical();
+                    Horizontal(() =>
+                    {                        
+                        Label("Current Preset", false);
+                        GUILayout.FlexibleSpace();
+                        crunchEngine.CurrentData = (CrunchEngineData)EditorGUILayout.ObjectField(crunchEngine.CurrentData, typeof(CrunchEngineData), false);
+                    });              
+                });
+                #endregion
 
-            mainScrollPosition = GUILayout.BeginScrollView(mainScrollPosition, false, false);
+                VerticalBox(() =>
+                {
+                    Label("Systems", true);
+                    crunchEngine.CurrentData.usingLoadingSystem = GUILayout.Toggle(crunchEngine.CurrentData.usingLoadingSystem, "Enable Loading System");
+                    crunchEngine.CurrentData.usingMusicSystem = GUILayout.Toggle(crunchEngine.CurrentData.usingMusicSystem, "Enable Music System");
+                    crunchEngine.CurrentData.usingSoundEffectSystem = GUILayout.Toggle(crunchEngine.CurrentData.usingSoundEffectSystem, "Enable Sound Effect System");
+                    crunchEngine.CurrentData.usingPoolingSystem = GUILayout.Toggle(crunchEngine.CurrentData.usingPoolingSystem, "Enable Pooling System");
+                });
 
-            #region Engine
+                #region UI                
+                VerticalBox(() =>
+                {
+                    Label("UI", true);
 
-            GUILayout.BeginVertical("Box");
+                    Label("Default Sound Events", false);
 
-            GUILayout.Label("Engine", EditorStyles.boldLabel);            
+                    Horizontal(() =>
+                    {
+                        GUILayout.Space(20);
+                        Label("On Mouse Enter", false);
+                        GUILayout.FlexibleSpace();
+                        crunchEngine.CurrentData.UISoundEvent_MouseEnter = (AudioClip)EditorGUILayout.ObjectField(crunchEngine.CurrentData.UISoundEvent_MouseEnter, typeof(AudioClip), false);
+                    });
 
-            //GUILayout.BeginHorizontal();
-            //GUILayout.Space(20);
-            //GUILayout.Label("Crunch Engine");
-            //GUILayout.FlexibleSpace();
-            //CrunchEngine boop = (CrunchEngine)EditorGUILayout.ObjectField(crunchEngine, typeof(CrunchEngine), false);
-            //GUILayout.EndHorizontal();
+                    Horizontal(() =>
+                    {
+                        GUILayout.Space(20);
+                        Label("On Mouse Down", false);
+                        GUILayout.FlexibleSpace();
+                        crunchEngine.CurrentData.UISoundEvent_MouseDown = (AudioClip)EditorGUILayout.ObjectField(crunchEngine.CurrentData.UISoundEvent_MouseDown, typeof(AudioClip), false);
+                    });
 
-            GUILayout.BeginHorizontal();
-            GUILayout.Space(20);
-            GUILayout.Label("Current Preset");
-            GUILayout.FlexibleSpace();
-            crunchEngine.CurrentData = (CrunchEngineData)EditorGUILayout.ObjectField(crunchEngine.CurrentData, typeof(CrunchEngineData), false);
-            GUILayout.EndHorizontal();
+                    Horizontal(() =>
+                    {
+                        GUILayout.Space(20);
+                        Label("On Mouse Up", false);
+                        GUILayout.FlexibleSpace();
+                        crunchEngine.CurrentData.UISoundEvent_MouseUp = (AudioClip)EditorGUILayout.ObjectField(crunchEngine.CurrentData.UISoundEvent_MouseUp, typeof(AudioClip), false);
+                    });
 
-            GUILayout.EndVertical();
-
-            #endregion
-
-            #region UI
-            GUILayout.BeginVertical("Box");
-
-            GUILayout.Label("UI", EditorStyles.boldLabel);
-
-            GUILayout.Label("Default Sound Events");
-
-            GUILayout.BeginHorizontal();
-            GUILayout.Space(20);
-            GUILayout.Label("On Mouse Enter");
-            GUILayout.FlexibleSpace();
-            crunchEngine.CurrentData.UISoundEvent_MouseEnter = (AudioClip)EditorGUILayout.ObjectField(crunchEngine.CurrentData.UISoundEvent_MouseEnter, typeof(AudioClip), false);
-            GUILayout.EndHorizontal();
-
-            GUILayout.BeginHorizontal();
-            GUILayout.Space(20);
-            GUILayout.Label("On Mouse Down");
-            GUILayout.FlexibleSpace();
-            crunchEngine.CurrentData.UISoundEvent_MouseDown = (AudioClip)EditorGUILayout.ObjectField(crunchEngine.CurrentData.UISoundEvent_MouseDown, typeof(AudioClip), false);
-            GUILayout.EndHorizontal();
-
-            GUILayout.BeginHorizontal();
-            GUILayout.Space(20);
-            GUILayout.Label("On Mouse Up");
-            GUILayout.FlexibleSpace();
-            crunchEngine.CurrentData.UISoundEvent_MouseUp = (AudioClip)EditorGUILayout.ObjectField(crunchEngine.CurrentData.UISoundEvent_MouseUp, typeof(AudioClip), false);
-            GUILayout.EndHorizontal();
-
-            GUILayout.BeginHorizontal();
-            GUILayout.Space(20);
-            GUILayout.Label("On Mouse Exit");
-            GUILayout.FlexibleSpace();
-            crunchEngine.CurrentData.UISoundEvent_MouseExit = (AudioClip)EditorGUILayout.ObjectField(crunchEngine.CurrentData.UISoundEvent_MouseExit, typeof(AudioClip), false);
-            GUILayout.EndHorizontal();
-
-            GUILayout.EndVertical();
-#endregion
-            GUILayout.EndScrollView();
+                    Horizontal(() =>
+                    {
+                        GUILayout.Space(20);
+                        Label("On Mouse Exit", false);
+                        GUILayout.FlexibleSpace();
+                        crunchEngine.CurrentData.UISoundEvent_MouseExit = (AudioClip)EditorGUILayout.ObjectField(crunchEngine.CurrentData.UISoundEvent_MouseExit, typeof(AudioClip), false);
+                    });
+                });         
+                #endregion
+            });            
         }
 
         private void Draw_UtilitiesTab()
@@ -499,53 +514,131 @@ namespace Crunch.Engine.Editor
             if (!utilitiesTab)
                 return;
 
-            GUILayout.BeginVertical("Box");
-            GUILayout.Label("Utilities", EditorStyles.boldLabel);
-            GUILayout.EndVertical();
-
-            mainScrollPosition = GUILayout.BeginScrollView(mainScrollPosition, false, false);
-            GUILayout.BeginVertical("Box");
-            GUILayout.Label("UI", EditorStyles.boldLabel);
-            if (GUILayout.Button("Create Window"))
+            VerticalBox(() =>
             {
-                Crunch.Engine.Editor.UI.CreateNewWindow();
-            }
+                Label("Utilities", true);
+            });
+            
+            ScrollBox(() =>
+            {
+                VerticalBox(() =>
+                {
+                    Label("UI", true);
+                    if (GUILayout.Button("Create Window"))
+                    {
+                        Crunch.Engine.Editor.UI.CreateNewWindow();
+                    }
+                });
+            });
+
+        }
+
+        #endregion
+
+        #region Shorthand Layout Method
+
+        // Displays a label in the window, with the option to make it bold
+        private void Label(string content, bool bold)
+        {
+            if (bold)
+                GUILayout.Label(content, EditorStyles.boldLabel);
+            else
+                GUILayout.Label(content);
+        }
+
+        // Displays all content within in a horizontal layout group
+        private void Horizontal(Action content)
+        {
+            GUILayout.BeginHorizontal();
+            content();
+            GUILayout.EndHorizontal();
+        }
+
+        // Displays all content within in a horizontal layout group, surrounded by a box
+        private void HorizontalBox(Action content)
+        {
+            GUILayout.BeginHorizontal("Box");
+            content();
+            GUILayout.EndHorizontal();
+        }
+
+        // Displays all content within in a vertical layout group
+        private void Vertical(Action content)
+        {
+            GUILayout.BeginVertical();
+            content();
             GUILayout.EndVertical();
+        }
+
+        // Displays all content within in a vertical layout group, surrounded by a box
+        private void VerticalBox(Action content)
+        {
+            GUILayout.BeginVertical("Box");
+            content();
+            GUILayout.EndVertical();
+        }
+
+        // Displays all content within in a horizontal layout group, with layout option parameters
+        private void Vertical(Action content, params GUILayoutOption[] options)
+        {
+            GUILayout.BeginVertical(options);
+            content();
+            GUILayout.EndVertical();
+        }
+
+        // Displays all content within in a horizontal layout group, with a specified GUIStyle
+        private void Vertical(Action content, GUIStyle style)
+        {
+            GUILayout.BeginVertical(style);
+            content();
+            GUILayout.EndVertical();
+        }
+
+        // Surrounds the content within inside a scroll box. NOTE: This is used for main tabs only.
+        private void ScrollBox(Action content)
+        {
+            mainScrollPosition = GUILayout.BeginScrollView(mainScrollPosition, false, false);
+            content();
             GUILayout.EndScrollView();
         }
 
-        private void OnGUI()
+        #endregion
+
+        #region Favourites
+
+        // Reads the favourite GameObjects the developer has chosen. 
+        private void ReadFavourites()
         {
-            CrunchEngine ce = GameObject.FindObjectOfType<CrunchEngine>();
-            if (ce == null)
+            string text = "";
+            if (File.Exists(Application.dataPath + "/Megabite Studios/Crunch/Resources/Data/crunch_favourites.txt"))
             {
-                hasCrunchEngine = false;
-                hasCurrentData = false;
-                //currentData = null;
-                crunchEngine = null;
-            }
-            else
-            {
-                crunchEngine = ce;
-                hasCrunchEngine = true;
+                text = File.ReadAllText(Application.dataPath + "/Megabite Studios/Crunch/Resources/Data/crunch_favourites.txt");
 
-                if (crunchEngine.CurrentData != null)
+                string[] parse = text.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+
+                foreach (string stri in parse)
                 {
-                    hasCurrentData = true;
-                    //currentData = ce.CurrentData;
-                }
-                else
-                {
-                    hasCurrentData = false;
-                    //currentData = null;
+                    scene_FavouriteObjects.Add(int.Parse(stri));
                 }
             }
-
-            Draw();
-
-            //if (GameObject.FindObjectOfType<CrunchEngine>() == null) hasPreset = false;
-            //else hasPreset = true;
         }
+
+        // Saves the favourite GameObjects the developer has chosen.
+        private void SaveFavourites()
+        {
+            string text = "";
+            foreach (int item in scene_FavouriteObjects)
+            {
+                text += item.ToString() + ";";
+            }
+            File.WriteAllText(Application.dataPath + "/Megabite Studios/Crunch/Resources/Data/crunch_favourites.txt", text);
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+        }
+
+        #endregion
+
+        #region DrawList Methods
 
         private void DrawList(GameObject item, Action action)
         {
@@ -598,12 +691,12 @@ namespace Crunch.Engine.Editor
             if (Scene_ShowTypes) action();
 
             GUILayout.EndHorizontal();
-            GUILayout.Space(4);            
+            GUILayout.Space(4);
             GUILayout.EndVertical();
         }
 
         private void DrawList(GameObject item, Action action, int indent)
-        {            
+        {
             if (Scene_ShowTypes)
             {
                 GUILayout.BeginHorizontal();
@@ -699,44 +792,6 @@ namespace Crunch.Engine.Editor
             GUILayout.Space(4);
         }
 
-        private void ReadFavourites()
-        {
-            string text = "";
-            if (File.Exists(Application.dataPath + "/Megabite Studios/Crunch/Resources/Data/crunch_favourites.txt"))
-            {
-                text = File.ReadAllText(Application.dataPath + "/Megabite Studios/Crunch/Resources/Data/crunch_favourites.txt");
-
-                string[] parse = text.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
-
-                foreach (string stri in parse)
-                {
-                    scene_FavouriteObjects.Add(int.Parse(stri));
-                }
-            }
-        }
-
-        private void SaveFavourites()
-        {
-            string text = "";
-            foreach (int item in scene_FavouriteObjects)
-            {
-                text += item.ToString() + ";";
-            }
-            File.WriteAllText(Application.dataPath + "/Megabite Studios/Crunch/Resources/Data/crunch_favourites.txt", text);
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
-        }     
-
-        //private void HorizontalIndent(int indent, Action action)
-        //{
-        //    GUILayout.BeginHorizontal();
-        //    GUILayout.Space(20 * indent);
-        //    GUILayout.BeginHorizontal("Box");
-        //    action();
-        //    GUILayout.EndHorizontal();
-        //    GUILayout.Space(20 * indent);
-        //    GUILayout.EndHorizontal();
-
-        //}
+        #endregion
     }
 }
